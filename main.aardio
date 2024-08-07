@@ -1,0 +1,123 @@
+import win.ui;
+//if( ! win.loadForm("\dlg\login\login.aardio").doModal() ){
+//	return;
+//}
+/*DSG{{*/
+mainForm = win.form(text="XpathCheck";right=959;bottom=591)
+mainForm.add(
+button={cls="button";text="Request";left=320;top=48;right=448;bottom=80;z=9};
+button2={cls="button";text="Filter";left=824;top=48;right=952;bottom=80;z=10};
+edit={cls="edit";left=8;top=88;right=448;bottom=584;autohscroll=false;edge=1;multiline=1;vscroll=1;z=1};
+edit2={cls="edit";left=512;top=88;right=952;bottom=584;autohscroll=false;edge=1;multiline=1;vscroll=1;z=2};
+edit3={cls="edit";text="http://mirrors.tuna.tsinghua.edu.cn";left=56;top=8;right=448;bottom=40;edge=1;multiline=1;z=3};
+edit4={cls="edit";text="//title";left=592;top=8;right=952;bottom=40;edge=1;multiline=1;z=4};
+static={cls="static";text="URL:";left=8;top=8;right=64;bottom=40;center=1;transparent=1;z=5};
+static2={cls="static";text="XPATH:";left=512;top=8;right=568;bottom=40;center=1;transparent=1;z=6};
+static3={cls="static";text="URL Response:";left=8;top=48;right=112;bottom=80;center=1;transparent=1;z=7};
+static4={cls="static";text="XPATH Filter:";left=512;top=48;right=632;bottom=80;center=1;transparent=1;z=8}
+)
+/*}}*/
+
+//mainForm.tab.loadForm("\dlg\main\tabs1.aardio");
+//mainForm.tab.loadForm("\dlg\main\tabs2.aardio");
+//mainForm.tab.loadForm("\dlg\main\tabs3.aardio");
+
+import process.rpc.jsonClient;
+
+// 检查exe文件
+import io;
+import fsys;
+
+// 发布文件后
+if(not _STUDIO_INVOKED) {
+	var rpcExePath = fsys.joinpath(io._exedir, "xpathlib.exe");
+    if (not io.exist(rpcExePath)) {
+    	win.msgboxErr("xpathlib.exe缺失，程序退出");
+    	return;
+	}
+	mainForm.rpcExePath = rpcExePath;
+} else {
+    import ide;
+    var rpcExePath = fsys.joinpath(ide.getPublisDir(), "xpathlib.exe");
+    if (not io.exist(rpcExePath)) {
+    	win.msgboxErr("xpathlib.exe缺失，主程序退出");
+    	return;
+	}
+	mainForm.rpcExePath = rpcExePath;
+}
+
+{
+	//var go;
+	var err;
+    go, err = process.rpc.jsonClient(mainForm.rpcExePath);
+    if(err) {
+        win.msgboxErr("xpathlib.exe启动失败，主程序退出");
+        return;
+    }
+    //mainForm.go = go;
+    
+    // 再次确定是否在运行
+    win.delay(200);
+    if(not go.stillActive()) {
+        win.msgboxErr("xpathlib.exe运行异常，主程序退出");
+        return;
+    }
+}
+
+mainForm.button.oncommand = function(id,event){
+	var url = mainForm.edit3.text;
+	if(#url) {
+		import string.xml;
+	    import inet.http;
+	    //var ohttp = inet.http();
+	    //HtmlText = ohttp.get(url);
+	    HtmlText = inet.http.get(url);
+	    
+	    if(HtmlText and #HtmlText > 0) {
+	        //var string_xml = string.xml(HtmlText);
+	        // 格式化
+	        //HtmlText = string_xml.outerXml();
+	        mainForm.edit.text = HtmlText;
+	    }
+	}
+}
+
+import console;
+import web.json;
+mainForm.button2.oncommand = function(id,event){
+	//console.dump(t);
+	// 为空则忽略
+	if not(HtmlText and #HtmlText > 0) {
+	    return;
+	}
+	
+	// 为空则忽略
+	if not (mainForm.edit4.text and #mainForm.edit4.text > 0) {
+	    return;
+	}
+	
+	HtmlText = HtmlText;
+	//var go = mainForm.go;
+	//console.dump("-----HtmlText LENGTH:", #HtmlText);
+	//console.dump("-----mainForm.edit4.text:", mainForm.edit4.text);
+	
+	var rep, err = go.RpcBridge.XPathParse({
+        Html = HtmlText;
+        Expr = mainForm.edit4.text;
+    })
+    
+    var t = rep[["result"]][["Filter"]];
+    //console.dump("-----t:" );
+    //console.dumpTable(t)
+    if(t) {
+        mainForm.edit2.text = "";
+        mainForm.edit2.text = t;
+	} 
+	else{
+		mainForm.edit2.text = "";
+		mainForm.edit2.print(err)
+	} 
+}
+
+mainForm.show();
+return win.loopMessage();
